@@ -162,7 +162,7 @@ struct Systray {
 };
 
 /* function declarations */
-static void applyrules(Client *c);
+static void applyrules(Client *c, int default_tags);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
@@ -219,6 +219,8 @@ static void resizemouse(const Arg *arg);
 static void resizerequest(XEvent *e);
 static void restack(Monitor *m);
 static void run(void);
+static void runrulesall(const Arg *args);
+static void runrulesfocused(const Arg *args);
 static void scan(void);
 static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
@@ -308,7 +310,7 @@ struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
 /* function implementations */
 void
-applyrules(Client *c)
+applyrules(Client *c, int default_tags)
 {
 	const char *class, *instance;
 	unsigned int i;
@@ -340,7 +342,7 @@ applyrules(Client *c)
 		XFree(ch.res_class);
 	if (ch.res_name)
 		XFree(ch.res_name);
-	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : default_tags ? default_tags : c->mon->tagset[c->mon->seltags];
 }
 
 int
@@ -1169,7 +1171,7 @@ manage(Window w, XWindowAttributes *wa)
 		c->tags = t->tags;
 	} else {
 		c->mon = selmon;
-		applyrules(c);
+		applyrules(c, 0);
 	}
 
 	if (c->x + WIDTH(c) > c->mon->wx + c->mon->ww)
@@ -1559,6 +1561,28 @@ run(void)
 	while (running && !XNextEvent(dpy, &ev))
 		if (handler[ev.type])
 			handler[ev.type](&ev); /* call handler */
+}
+
+static void
+runrulesfocused(const Arg *args)
+{
+	if (selmon->sel) {
+        applyrules(selmon->sel, 0);
+		focus(NULL);
+		arrange(selmon);
+	}
+}
+
+static void
+runrulesall(const Arg *args)
+{
+    for (Monitor *m = selmon; m; m=m->next) {
+        for (Client *c = m->clients; c; c = c->next) {
+            applyrules(c, c->tags);
+        }
+        arrange(m);
+    }
+    focus(NULL);
 }
 
 void
