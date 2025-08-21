@@ -270,6 +270,7 @@ static void zoom(const Arg *arg);
 static void bstack(Monitor *m);
 static void bstackhoriz(Monitor *m);
 static void swapmon(const Arg *arg);
+static void focusurgent(const Arg *arg);
 
 /* variables */
 static Systray *systray = NULL;
@@ -2727,6 +2728,27 @@ bstackhoriz(Monitor *m) {
 			resize(c, tx, ty, m->ww - (2 * c->bw), th - (2 * c->bw), 0);
 			if (th != m->wh)
 				ty += HEIGHT(c);
+		}
+	}
+}
+
+static void
+focusurgent(const Arg *arg) {
+	Monitor *m;
+	Client *c;
+	int i;
+	for(m=mons; m; m=m->next){
+		for(c=m->clients; c && !c->isurgent; c=c->next);
+		if(c) {
+			unfocus(selmon->sel, 0);
+			selmon = m;
+			for(i=0; i < LENGTH(tags) && !((1 << i) & c->tags); i++);
+			if(i < LENGTH(tags)) {
+				const Arg a = {.ui = 1 << i};
+				view(&a);
+				focus(c);
+				warp(c);
+			}
 		}
 	}
 }
