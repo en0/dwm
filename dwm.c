@@ -268,6 +268,7 @@ static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 static void bstack(Monitor *m);
 static void bstackhoriz(Monitor *m);
+static void swapmon(const Arg *arg);
 
 /* variables */
 static Systray *systray = NULL;
@@ -809,7 +810,7 @@ drawbar(Monitor *m)
 		stw = getsystraywidth();
 
 	/* draw status first so it can be overdrawn by tags later */
-	if (m == selmon) { /* status is only drawn on selected monitor */
+	if (m == &mons[mainmon]) { /* status is only drawn on main monitor */
 		drw_setscheme(drw, scheme[SchemeNorm]);
 		tw = TEXTW(stext) - lrpad / 2 + 2; /* 2px extra right padding */
 		drw_text(drw, m->ww - tw - stw, 0, tw, bh, lrpad / 2 - 2, stext, 0);
@@ -2549,6 +2550,38 @@ zoom(const Arg *arg)
 	if (c == nexttiled(selmon->clients) && !(c = nexttiled(c->next)))
 		return;
 	pop(c);
+}
+
+void
+swapmon(const Arg *arg)
+{
+    if (mons->next == NULL)
+        return;
+
+    Monitor *m1 = mons;
+    Monitor *m2 = mons->next;
+
+    unsigned int tmp = m1->tagset[m1->seltags];
+    m1->tagset[m1->seltags] = m2->tagset[m2->seltags];
+    m2->tagset[m2->seltags] = tmp;
+
+    Client *c;
+    for (c = m1->clients; c; c = c->next)
+        c->mon = m2;
+    for (c = m2->clients; c; c = c->next)
+        c->mon = m1;
+
+    Client *tmp_clients = m1->clients;
+    m1->clients = m2->clients;
+    m2->clients = tmp_clients;
+
+    Client *tmp_stack = m1->stack;
+    m1->stack = m2->stack;
+    m2->stack = tmp_stack;
+
+    focus(NULL);
+    arrange(m1);
+    arrange(m2);
 }
 
 int
