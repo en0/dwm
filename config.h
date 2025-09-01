@@ -44,6 +44,7 @@ static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
 	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
 	{ "firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
+	{ "float",    NULL,       NULL,       511,          1,           -1 },
 };
 
 /* layout(s) */
@@ -75,31 +76,58 @@ static const Layout layouts[] = {
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static char dmenumon[2]           = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[]     = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
-static const char *termcmd[]      = { "st", NULL };
-static const char *incvol[]       = {"/usr/bin/amixer", "set", "Master", "1%+", NULL};
-static const char *decvol[]       = {"/usr/bin/amixer", "set", "Master", "1%-", NULL};
-static const char *mutevol[]      = {"/usr/bin/amixer", "set", "Master", "toggle", NULL};
-static const char *incbacklight[] = { "nenobacklight", "set", "intel_backlight", "5%+", NULL };
-static const char *decbacklight[] = { "nenobacklight", "set", "intel_backlight", "5%-", NULL };
+static char dmenumon[2]            = "0"; /* component of dmenucmd, manipulated in spawn() */
+static const char *dmenucmd[]      = { "dmenu_run", "-p", " Launch:", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
+static const char *tool_menu[]     = { "./.bin/tools", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
+static const char *termcmd[]       = { "st", NULL };
+
+static const char *incvol[]        = {"./.bin/set-audio", "Master", "1%+", NULL};
+static const char *decvol[]        = {"./.bin/set-audio", "Master", "1%-", NULL};
+static const char *mutevol[]       = {"./.bin/set-audio", "Master", "toggle", NULL};
+static const char *incmic[]        = {"./.bin/set-audio", "Capture", "1%+", NULL};
+static const char *decmic[]        = {"./.bin/set-audio", "Capture", "1%-", NULL};
+static const char *mutemic[]       = {"./.bin/set-audio", "Capture", "toggle", NULL};
+static const char *incbacklight[]  = { "nenobacklight", "set", "intel_backlight", "5%+", NULL };
+static const char *decbacklight[]  = { "nenobacklight", "set", "intel_backlight", "5%-", NULL };
 static const char *fullbacklight[] = { "nenobacklight", "set", "intel_backlight", "100%", NULL };
 static const char *halfbacklight[] = { "nenobacklight", "set", "intel_backlight", "50%", NULL };
+static const char *media_info[]    = { "./.bin/notify-current-media" , NULL };
+static const char *media_pause[]   = { "/usr/bin/playerctl", "play-pause" , NULL };
+static const char *media_prev[]    = { "/usr/bin/playerctl", "previous" , NULL };
+static const char *media_next[]    = { "/usr/bin/playerctl", "next" , NULL };
+static const char *browser[]       = { "/usr/bin/firefox", "next" , NULL };
+
+static const char *rscript[]       = { "./.bin/test-script.sh", NULL };
+static const char *sshot[]         = { "./.bin/tool-screenshot", NULL };
+
 
 static const Key keys[] = {
 	/* modifier         key                        function          argument */
 
     // Media Keys
-	{ 0,			    XF86XK_AudioLowerVolume,   spawn,            {.v = decvol       } },
-	{ 0,			    XF86XK_AudioRaiseVolume,   spawn,            {.v = incvol       } },
-    { 0,                XF86XK_AudioMute,          spawn,            {.v = mutevol      } },
-	{ 0,			    XF86XK_MonBrightnessUp,    spawn,            {.v = incbacklight } },
-	{ 0,			    XF86XK_MonBrightnessDown,  spawn,            {.v = decbacklight } },
+	{ 0,			    XF86XK_AudioLowerVolume,   spawn,            {.v = decvol        } },
+	{ 0,			    XF86XK_AudioRaiseVolume,   spawn,            {.v = incvol        } },
+    { 0,                XF86XK_AudioMute,          spawn,            {.v = mutevol       } },
+	{ ShiftMask,        XF86XK_AudioLowerVolume,   spawn,            {.v = decmic        } },
+	{ ShiftMask,	    XF86XK_AudioRaiseVolume,   spawn,            {.v = incmic        } },
+    { 0,                XF86XK_AudioMicMute,       spawn,            {.v = mutemic       } },
+	{ 0,			    XF86XK_MonBrightnessUp,    spawn,            {.v = incbacklight  } },
+	{ 0,			    XF86XK_MonBrightnessDown,  spawn,            {.v = decbacklight  } },
 	{ ShiftMask,        XF86XK_MonBrightnessUp,    spawn,            {.v = fullbacklight } },
 	{ ShiftMask,        XF86XK_MonBrightnessDown,  spawn,            {.v = halfbacklight } },
+	{ 0,                XF86XK_Favorites,          spawn,            {.v = browser       } },
+
+
+	{ MODKEY,           XK_Up,                     spawn,            {.v = media_info} },
+	{ MODKEY,           XK_Down,                   spawn,            {.v = media_pause} },
+	{ MODKEY,           XK_Left,                   spawn,            {.v = media_prev} },
+	{ MODKEY,           XK_Right,                  spawn,            {.v = media_next} },
 
     // Launchers
 	{ MODKEY,           XK_p,                      spawn,            {.v = dmenucmd } },
+    { MODKEY|ShiftMask, XK_p,                      spawn,            {.v = tool_menu} },
+	{ MODKEY,           XK_o,                      spawn,            {.v = rscript  } },
+	{ MODKEY,           XK_c,                      spawn,            {.v = sshot    } },
 	{ MODKEY|ShiftMask, XK_Return,                 spawn,            {.v = termcmd  } },
 	{ MODKEY|ShiftMask, XK_q,                      quit,             { 0 }            },
 
