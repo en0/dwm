@@ -65,7 +65,7 @@ static const Layout layouts[] = {
 };
 
 /* key definitions */
-#define MODKEY Mod1Mask
+#define MODKEY Mod4Mask
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
 	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
@@ -98,7 +98,7 @@ static const char *media_next[]    = { "/usr/bin/playerctl", "next" , NULL };
 static const char *browser[]       = { "/usr/bin/firefox", "next" , NULL };
 
 static const char *rscript[]       = { "./.bin/test-script.sh", NULL };
-static const char *sshot[]         = { "./.bin/tool-screenshot", NULL };
+static const char *sshot[]         = { "./.bin/tool/tool-screenshot", NULL };
 
 
 static const Key keys[] = {
