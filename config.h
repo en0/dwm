@@ -48,7 +48,7 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact        = 0.55; /* factor of master area size [0.05..0.95] */
+static const float mfact        = 0.75; /* factor of master area size [0.05..0.95] */
 static const int nmaster        = 1;    /* number of clients in master area */
 static const int resizehints    = 0;    /* 1 means respect size hints in tiled resizals */
 static const int lockfullscreen = 1;    /* 1 will force focus on the fullscreen window */
@@ -57,7 +57,8 @@ static const int mainmon        = 0;    /* xsetroot will only change the bar on 
 
 static const Layout layouts[] = {
 	/* symbol   arrange function */
-	{ "",      tile },
+	{ "",      tileright },
+    { "",      tileleft },
 	{ "",      bstack },
 	{ "󰗉",      bstackhoriz },
 	{ "",      monocle },
@@ -80,7 +81,6 @@ static char dmenumon[2]            = "0"; /* component of dmenucmd, manipulated 
 static const char *dmenucmd[]      = { "dmenu_run", "-p", " Launch:", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *tool_menu[]     = { "./.bin/tools", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *termcmd[]       = { "st", NULL };
-
 static const char *incvol[]        = {"./.bin/set-audio", "Master", "1%+", NULL};
 static const char *decvol[]        = {"./.bin/set-audio", "Master", "1%-", NULL};
 static const char *mutevol[]       = {"./.bin/set-audio", "Master", "toggle", NULL};
@@ -96,10 +96,17 @@ static const char *media_pause[]   = { "/usr/bin/playerctl", "play-pause" , NULL
 static const char *media_prev[]    = { "/usr/bin/playerctl", "previous" , NULL };
 static const char *media_next[]    = { "/usr/bin/playerctl", "next" , NULL };
 static const char *browser[]       = { "/usr/bin/firefox", "next" , NULL };
-
-static const char *rscript[]       = { "./.bin/test-script.sh", NULL };
 static const char *sshot[]         = { "./.bin/tool/tool-screenshot", NULL };
-
+static const char *notes[]         = { "./.bin/tool/tool-notes", NULL };
+static const char *clipboard[]     = { "./.bin/tool/tool-clipboard_history", NULL };
+static const char *todos[]         = { "./.bin/tool/tool-todo", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
+static const char *mathtool[]      = { "./.bin/tool/tool-math", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
+static const char *notify[]        = { "dunstctl", "history-pop", NULL };
+static const char *hwstats[]       = { "./.bin/tool/tool-hwstat", NULL };
+static const char *ip_addr[]       = { "./.bin/tool/tool-ip_info", NULL };
+static const char *bluetooth[]       = { "./.bin/tool/tool-bluetooth", NULL };
+static const char *session[]       = { "./.bin/tool/tool-session", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
+static const char *lock[]          = { "slock", NULL };
 
 static const Key keys[] = {
 	/* modifier         key                        function          argument */
@@ -119,17 +126,25 @@ static const Key keys[] = {
 
 
 	{ MODKEY,           XK_Up,                     spawn,            {.v = media_info} },
-	{ MODKEY,           XK_Down,                   spawn,            {.v = media_pause} },
-	{ MODKEY,           XK_Left,                   spawn,            {.v = media_prev} },
-	{ MODKEY,           XK_Right,                  spawn,            {.v = media_next} },
+	{ 0,                XF86XK_AudioPlay,          spawn,            {.v = media_pause} },
+	{ 0,                XF86XK_AudioPrev,          spawn,            {.v = media_prev} },
+	{ 0,                XF86XK_AudioNext,          spawn,            {.v = media_next} },
 
     // Launchers
 	{ MODKEY,           XK_p,                      spawn,            {.v = dmenucmd } },
     { MODKEY|ShiftMask, XK_p,                      spawn,            {.v = tool_menu} },
-	{ MODKEY,           XK_o,                      spawn,            {.v = rscript  } },
+	{ MODKEY,           XK_o,                      spawn,            {.v = lock     } },
+	{ MODKEY|ShiftMask, XK_o,                      spawn,            {.v = session  } },
 	{ MODKEY,           XK_c,                      spawn,            {.v = sshot    } },
+	{ MODKEY|ShiftMask, XK_c,                      spawn,            {.v = clipboard} },
+	{ MODKEY,           XK_a,                      spawn,            {.v = notes    } },
+	{ MODKEY|ShiftMask, XK_a,                      spawn,            {.v = todos    } },
+	{ MODKEY,           XK_n,                      spawn,            {.v = notify   } },
+	{ MODKEY,           XK_m,                      spawn,            {.v = mathtool } },
+	{ MODKEY,           XK_z,                      spawn,            {.v = hwstats  } },
+	{ MODKEY|ShiftMask, XK_z,                      spawn,            {.v = ip_addr  } },
+    { MODKEY|ShiftMask, XK_b,                      spawn,            {.v = bluetooth} },
 	{ MODKEY|ShiftMask, XK_Return,                 spawn,            {.v = termcmd  } },
-	{ MODKEY|ShiftMask, XK_q,                      quit,             { 0 }            },
 
     // Window Management
 	{ MODKEY,           XK_Return,                 zoom,             {0} },
@@ -155,14 +170,16 @@ static const Key keys[] = {
 	{ MODKEY,           XK_u,                      focusurgent,      {0} },
 	{ MODKEY,           XK_b,                      togglebar,        {0} },
 
-	{ MODKEY|ShiftMask, XK_c,                      killclient,       {0} },
+	{ MODKEY,           XK_q,                      killclient,       {0} },
+	{ MODKEY|ShiftMask, XK_q,                      quit,             { 0 }            },
 
     // Layouts
 	{ MODKEY,           XK_t,                      setlayout,        {.v = &layouts[0]} },
-	{ MODKEY,           XK_e,                      setlayout,        {.v = &layouts[1]} },
-	{ MODKEY|ShiftMask, XK_e,                      setlayout,        {.v = &layouts[2]} },
-	{ MODKEY,           XK_m,                      setlayout,        {.v = &layouts[3]} },
+	{ MODKEY|ShiftMask, XK_t,                      setlayout,        {.v = &layouts[1]} },
+	{ MODKEY,           XK_e,                      setlayout,        {.v = &layouts[2]} },
+	{ MODKEY|ShiftMask, XK_e,                      setlayout,        {.v = &layouts[3]} },
 	{ MODKEY,           XK_f,                      setlayout,        {.v = &layouts[4]} },
+	{ MODKEY|ShiftMask, XK_f,                      setlayout,        {.v = &layouts[5]} },
 	{ MODKEY,           XK_space,                  setlayout,        {0} },
 	{ MODKEY|ShiftMask, XK_space,                  togglefloating,   {0} },
 
