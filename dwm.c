@@ -162,6 +162,12 @@ struct Systray {
 	Client *icons;
 };
 
+typedef struct Target Target;
+struct Target {
+    const char* label;
+    const char* hostname;
+};
+
 /* function declarations */
 static void applyrules(Client *c, int default_tags);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
@@ -272,6 +278,7 @@ static void bstack(Monitor *m);
 static void bstackhoriz(Monitor *m);
 static void swapmon(const Arg *arg);
 static void focusurgent(const Arg *arg);
+static void settarget(const Arg *arg);
 
 /* variables */
 static Systray *systray = NULL;
@@ -308,6 +315,7 @@ static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
+static int target_idx = 0;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -804,6 +812,7 @@ drawbar(Monitor *m)
 	int boxs = drw->fonts->h / 9;
 	int boxw = drw->fonts->h / 6 + 2;
 	unsigned int i, occ = 0, urg = 0;
+    Target t = targets[target_idx];
 	Client *c;
 
 	if (!m->showbar)
@@ -836,6 +845,9 @@ drawbar(Monitor *m)
 	w = TEXTW(m->ltsymbol);
 	drw_setscheme(drw, scheme[SchemeNorm]);
 	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
+
+    w = TEXTW(t.label);
+    x = drw_text(drw, x, 0, w, bh, lrpad / 2, t.label, 0);
 
 	if ((w = m->ww - tw - stw - x) > bh) {
 		if (m->sel) {
@@ -1875,6 +1887,10 @@ spawn(const Arg *arg)
 
 	if (arg->v == dmenucmd)
 		dmenumon[0] = '0' + selmon->num;
+
+    int n_cmd = 0; while(((char*)arg->v)[n_cmd]) n_cmd++;
+    char **cmd;
+
 	if (fork() == 0) {
 		if (dpy)
 			close(ConnectionNumber(dpy));
@@ -1885,7 +1901,22 @@ spawn(const Arg *arg)
 		sa.sa_handler = SIG_DFL;
 		sigaction(SIGCHLD, &sa, NULL);
 
-		execvp(((char **)arg->v)[0], (char **)arg->v);
+        if (targets[target_idx].hostname == NULL) {
+		    execvp(((char **)arg->v)[0], (char **)arg->v);
+        } else {
+            /* n_cmd is lenth of arg->v
+             * +1 for "ssh"
+             * +1 for targets[target_idx].hostname
+             * +1 for NULL */
+            cmd = malloc((n_cmd + 3) * sizeof(char*));
+            if (!cmd) die("dwm: tagets not implemented:", targets[target_idx].label);
+            int i = 0;
+            cmd[i++] = "ssh";
+            cmd[i++] = (char*)targets[target_idx].hostname;
+            for (int c = 0; c < n_cmd; ++c) cmd[i++] = ((char**)arg->v)[c];
+            cmd[i++] = NULL;
+            execvp(cmd[0], cmd);
+        }
 		die("dwm: execvp '%s' failed:", ((char **)arg->v)[0]);
 	}
 }
@@ -2777,4 +2808,18 @@ focusurgent(const Arg *arg) {
 			}
 		}
 	}
+}
+
+static void
+settarget(const Arg *arg) {
+    const int new_target_idx = target_idx + arg->i;
+    const int max_target_idx = sizeof(targets) / sizeof(Target);
+    // Use floor division here to wrap negative numbers back around.
+    // new = n, max = 4, arg->i = -1
+    //  n  | result
+    //  ------------------
+    //  2  | ( 2+arg->i) =  1, ( 1 % max) = 1
+    //  1  | ( 1+arg->i) =  0, ( 0 % max) = 0
+    //  0  | ( 0+arg->i) = -1, (-1 % max) = 3
+    target_idx = ((new_target_idx % max_target_idx) + max_target_idx) % max_target_idx;
 }

@@ -110,6 +110,13 @@ static const char *bluetooth[]       = { "./.bin/tool/tool-bluetooth", NULL };
 static const char *session[]       = { "./.bin/tool/tool-session", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *lock[]          = { "slock", NULL };
 
+/* Targets */
+static const Target targets[] = {
+	/* label      Hostname */
+	{ "[Local]", NULL      }, // Default
+    { "[Patsy]", "patsy"   },
+};
+
 static const Key keys[] = {
 	/* modifier         key                        function          argument */
 
@@ -192,7 +199,11 @@ static const Key keys[] = {
 	{ MODKEY,           XK_period,                 focusmon,         {.i = +1 } },
 	{ MODKEY|ShiftMask, XK_comma,                  tagmon,           {.i = -1 } },
 	{ MODKEY|ShiftMask, XK_period,                 tagmon,           {.i = +1 } },
-	{ MODKEY|ShiftMask, XK_apostrophe,             swapmon,          {0} },
+	{ MODKEY,           XK_apostrophe,             swapmon,          {0} },
+
+    // Targets
+	{ MODKEY|ShiftMask, XK_Up,                     settarget,        {.i = 1} },
+	{ MODKEY|ShiftMask, XK_Down,                   settarget,        {.i = -1} },
 
     // Tagging
 	{ MODKEY,           XK_Tab,                    view,             {0} },
