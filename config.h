@@ -66,7 +66,9 @@ static const Layout layouts[] = {
 };
 
 /* key definitions */
+/*#define MODKEY Mod1Mask*/
 #define MODKEY Mod4Mask
+
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
 	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
@@ -81,6 +83,11 @@ static char dmenumon[2]            = "0"; /* component of dmenucmd, manipulated 
 static const char *dmenucmd[]      = { "dmenu_run", "-p", " Launch:", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *tool_menu[]     = { "./.bin/tools", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *termcmd[]       = { "st", NULL };
+
+/* Targeted commands (use tspawn) */
+static const char *tlauncher[]     = { "/home/ian/.dwm/launcher", NULL };
+static const char *tterminal[]     = { "/home/ian/.dwm/terminal", NULL };
+
 static const char *incvol[]        = {"./.bin/set-audio", "Master", "1%+", NULL};
 static const char *decvol[]        = {"./.bin/set-audio", "Master", "1%-", NULL};
 static const char *mutevol[]       = {"./.bin/set-audio", "Master", "toggle", NULL};
@@ -110,13 +117,6 @@ static const char *bluetooth[]       = { "./.bin/tool/tool-bluetooth", NULL };
 static const char *session[]       = { "./.bin/tool/tool-session", "-m", dmenumon, "-fn", dmenufont, "-nb", col_coco_black, "-nf", col_mossy, "-sb", col_dark_charcoal, "-sf", col_cakepop_sorbet, NULL };
 static const char *lock[]          = { "slock", NULL };
 
-/* Targets */
-static const Target targets[] = {
-	/* label      Hostname */
-	{ "[Local]", NULL      }, // Default
-    { "[Patsy]", "patsy"   },
-};
-
 static const Key keys[] = {
 	/* modifier         key                        function          argument */
 
@@ -140,7 +140,7 @@ static const Key keys[] = {
 	{ 0,                XF86XK_AudioNext,          spawn,            {.v = media_next} },
 
     // Launchers
-	{ MODKEY,           XK_p,                      spawn,            {.v = dmenucmd } },
+	{ MODKEY,           XK_p,                      tspawn,           {.v = tlauncher} },
     { MODKEY|ShiftMask, XK_p,                      spawn,            {.v = tool_menu} },
 	{ MODKEY,           XK_o,                      spawn,            {.v = lock     } },
 	{ MODKEY|ShiftMask, XK_o,                      spawn,            {.v = session  } },
@@ -155,7 +155,7 @@ static const Key keys[] = {
 	{ MODKEY,           XK_z,                      spawn,            {.v = hwstats  } },
 	{ MODKEY|ShiftMask, XK_z,                      spawn,            {.v = ip_addr  } },
     { MODKEY|ShiftMask, XK_b,                      spawn,            {.v = bluetooth} },
-	{ MODKEY|ShiftMask, XK_Return,                 spawn,            {.v = termcmd  } },
+	{ MODKEY|ShiftMask, XK_Return,                 tspawn,           {.v = tterminal} },
 
     // Window Management
 	{ MODKEY,           XK_Return,                 zoom,             {0} },

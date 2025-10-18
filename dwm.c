@@ -162,11 +162,9 @@ struct Systray {
 	Client *icons;
 };
 
-typedef struct Target Target;
-struct Target {
-    const char* label;
-    const char* hostname;
-};
+/* Target management */
+static char **target_labels = NULL;
+static int target_count = 0;
 
 /* function declarations */
 static void applyrules(Client *c, int default_tags);
@@ -207,6 +205,7 @@ static void incnmaster(const Arg *arg);
 static void inplacerotate(const Arg *arg);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
+static void loadtargets(void);
 static void manage(Window w, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
@@ -240,6 +239,7 @@ static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
 static void spawn(const Arg *arg);
+static void tspawn(const Arg *arg);
 static Monitor *systraytomon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
@@ -812,7 +812,7 @@ drawbar(Monitor *m)
 	int boxs = drw->fonts->h / 9;
 	int boxw = drw->fonts->h / 6 + 2;
 	unsigned int i, occ = 0, urg = 0;
-    Target t = targets[target_idx];
+	const char *target_label = (target_idx < target_count) ? target_labels[target_idx] : "Local";
 	Client *c;
 
 	if (!m->showbar)
@@ -846,8 +846,10 @@ drawbar(Monitor *m)
 	drw_setscheme(drw, scheme[SchemeNorm]);
 	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
-    w = TEXTW(t.label);
-    x = drw_text(drw, x, 0, w, bh, lrpad / 2, t.label, 0);
+    /* Draw target */
+    w = TEXTW(target_label);
+    drw_setscheme(drw, scheme[SchemeNorm]);
+    x = drw_text(drw, x, 0, w, bh, lrpad / 2, target_label, 0);
 
 	if ((w = m->ww - tw - stw - x) > bh) {
 		if (m->sel) {
@@ -1888,8 +1890,28 @@ spawn(const Arg *arg)
 	if (arg->v == dmenucmd)
 		dmenumon[0] = '0' + selmon->num;
 
-    int n_cmd = 0; while(((char*)arg->v)[n_cmd]) n_cmd++;
-    char **cmd;
+	if (fork() == 0) {
+		if (dpy)
+			close(ConnectionNumber(dpy));
+		setsid();
+
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
+		sa.sa_handler = SIG_DFL;
+		sigaction(SIGCHLD, &sa, NULL);
+
+		execvp(((char **)arg->v)[0], (char **)arg->v);
+		die("dwm: execvp '%s' failed:", ((char **)arg->v)[0]);
+	}
+}
+
+void
+tspawn(const Arg *arg)
+{
+	struct sigaction sa;
+	char **cmd;
+	const char *script_path = ((char **)arg->v)[0];
+	const char *target_name = (target_idx < target_count) ? target_labels[target_idx] : "Local";
 
 	if (fork() == 0) {
 		if (dpy)
@@ -1901,23 +1923,20 @@ spawn(const Arg *arg)
 		sa.sa_handler = SIG_DFL;
 		sigaction(SIGCHLD, &sa, NULL);
 
-        if (targets[target_idx].hostname == NULL) {
-		    execvp(((char **)arg->v)[0], (char **)arg->v);
-        } else {
-            /* n_cmd is lenth of arg->v
-             * +1 for "ssh"
-             * +1 for targets[target_idx].hostname
-             * +1 for NULL */
-            cmd = malloc((n_cmd + 3) * sizeof(char*));
-            if (!cmd) die("dwm: tagets not implemented:", targets[target_idx].label);
-            int i = 0;
-            cmd[i++] = "ssh";
-            cmd[i++] = (char*)targets[target_idx].hostname;
-            for (int c = 0; c < n_cmd; ++c) cmd[i++] = ((char**)arg->v)[c];
-            cmd[i++] = NULL;
-            execvp(cmd[0], cmd);
-        }
-		die("dwm: execvp '%s' failed:", ((char **)arg->v)[0]);
+		/* Build command: script_path target_name [original_args...] */
+		int n_cmd = 0; 
+		while(((char**)arg->v)[n_cmd]) n_cmd++;
+		
+		cmd = malloc((n_cmd + 2) * sizeof(char*));
+		if (!cmd) die("dwm: tspawn malloc failed");
+		
+		cmd[0] = (char*)script_path;
+		cmd[1] = (char*)target_name;
+		for (int c = 1; c < n_cmd; ++c) cmd[c+1] = ((char**)arg->v)[c];
+		cmd[n_cmd+1] = NULL;
+		
+		execvp(cmd[0], cmd);
+		die("dwm: execvp '%s' failed:", script_path);
 	}
 }
 
@@ -2658,6 +2677,7 @@ main(int argc, char *argv[])
 		die("dwm: cannot open display");
 	checkotherwm();
 	setup();
+	loadtargets();
 #ifdef __OpenBSD__
 	if (pledge("stdio rpath proc exec", NULL) == -1)
 		die("pledge");
@@ -2810,10 +2830,56 @@ focusurgent(const Arg *arg) {
 	}
 }
 
+void
+loadtargets(void)
+{
+	FILE *fp;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	
+	/* Free existing targets */
+	if (target_labels) {
+		for (int i = 0; i < target_count; i++)
+			free(target_labels[i]);
+		free(target_labels);
+	}
+	
+	target_labels = NULL;
+	target_count = 0;
+	target_idx = 0;
+	
+	fp = fopen("/home/ian/.dwm/targets", "r");
+	if (!fp) {
+		/* Fallback to Local only */
+		target_count = 1;
+		target_labels = malloc(target_count * sizeof(char*));
+		target_labels[0] = strdup("Local");
+		return;
+	}
+	
+	while ((read = getline(&line, &len, fp)) != -1) {
+		/* Remove newline */
+		if (line[read-1] == '\n')
+			line[read-1] = '\0';
+		
+		/* Skip empty lines */
+		if (strlen(line) == 0)
+			continue;
+			
+		target_labels = realloc(target_labels, (target_count + 1) * sizeof(char*));
+		target_labels[target_count] = strdup(line);
+		target_count++;
+	}
+	
+	free(line);
+	fclose(fp);
+}
+
 static void
 settarget(const Arg *arg) {
     const int new_target_idx = target_idx + arg->i;
-    const int max_target_idx = sizeof(targets) / sizeof(Target);
+    const int max_target_idx = target_count;
     // Use floor division here to wrap negative numbers back around.
     // new = n, max = 4, arg->i = -1
     //  n  | result
